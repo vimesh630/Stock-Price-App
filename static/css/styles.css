@@ -1,0 +1,101 @@
+/* Global Styles */
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(to right, #141E30, #243B55);
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+/* Header */
+header {
+    background: rgba(0, 0, 0, 0.8);
+    text-align: center;
+    padding: 15px;
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Container */
+.container {
+    width: 80%;
+    margin: 30px auto;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Stock Selection */
+select, input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+select {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Predict Button */
+button {
+    background: #ff9800;
+    color: white;
+    padding: 12px;
+    font-size: 18px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+    width: 100%;
+}
+
+button:hover {
+    background: #ff5722;
+    transform: scale(1.05);
+}
+
+/* Prediction Output */
+#prediction {
+    text-align: center;
+    font-size: 22px;
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 5px;
+    background: rgba(0, 255, 0, 0.2);
+    font-weight: bold;
+}
+
+/* Table for Model Metrics */
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+th {
+    background: rgba(255, 255, 255, 0.3);
+    font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+    }
+    button {
+        font-size: 16px;
+    }
+}

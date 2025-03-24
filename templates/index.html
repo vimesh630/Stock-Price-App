@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Price Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Include Chart.js (UMD bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- Include chartjs-plugin-zoom -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
+    <!-- Include moment.js and chartjs-adapter-moment -->
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/min/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Stock Price Prediction</h1>
+
+        <!-- Stock Selection Dropdown -->
+        <div class="section">
+            <label for="stock-select">Select Stock:</label>
+            <select id="stock-select" onchange="updateChart()">
+                {% for stock in stocks %}
+                    <option value="{{ stock }}">{{ stock }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Historical Price Chart -->
+        <div class="section">
+            <h2>Historical Price Trend</h2>
+            <canvas id="priceChart"></canvas>
+            <button id="reset-zoom" style="margin-top: 10px;">Reset Zoom</button>
+        </div>
+
+        <!-- Model Metrics -->
+        <div class="section">
+            <h2>Model Performance Metrics</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stock</th>
+                        <th>MSE</th>
+                        <th>MAE</th>
+                        <th>R2</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for metric in metrics %}
+                        <tr>
+                            <td>{{ metric.Stock }}</td>
+                            <td>{{ metric.MSE | round(2) }}</td>
+                            <td>{{ metric.MAE | round(2) }}</td>
+                            <td>{{ metric.R2 | round(4) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Prediction Form -->
+        <div class="section">
+            <h2>Predict Stock Price</h2>
+            <form id="prediction-form">
+                <label for="prev_price">Previous Day's Price:</label>
+                <input type="number" id="prev_price" name="prev_price" step="0.01" required><br><br>
+                
+                <label for="ma7">7-Day Moving Average:</label>
+                <input type="number" id="ma7" name="ma7" step="0.01" required><br><br>
+                
+                <button type="submit">Predict</button>
+            </form>
+            <div id="prediction-result"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Chart.js and Prediction -->
+    <script>
+        // Debug: Confirm scripts are loaded
+        console.log("Chart.js Loaded:", typeof Chart !== 'undefined' ? Chart.version : 'Not loaded');
+        console.log("Chart.js Time Scale Adapter:", Chart._adapters?._date);
+        console.log("Moment.js Loaded:", typeof moment !== 'undefined' ? moment.version : 'Not loaded');
+        console.log("Zoom Plugin Loaded:", typeof Chart.Zoom !== 'undefined' ? 'Yes' : 'No');
+
+        // Historical data passed from Flask
+        const historicalData = {{ historical_data | tojson }};
+        console.log("Historical Data:", historicalData);
+
+        // Latest features (Prev and MA7) for each stock
+        let latestFeatures;
+        try {
+            latestFeatures = {{ latest_features | tojson }};
+            console.log("Latest Features:", latestFeatures);
+        } catch (e) {
+            console.error("Error parsing latestFeatures:", e);
+            // Fallback: Use default values
+            latestFeatures = {};
+            const stockList = {{ stocks | tojson }};
+            stockList.forEach(stock => {
+                latestFeatures[stock] = { prev: 0.0, ma7: 0.0 };
+            });
+            console.log("Using fallback latestFeatures:", latestFeatures);
+        }
+
+        // Initialize the chart
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        console.log("Canvas Context:", ctx);
+
+        let chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'AAPL Price',
+                    data: historicalData['AAPL'],
+                    borderColor: 'blue',
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { 
+                        type: 'time',
+                        title: { display: true, text: 'Date' },
+                        time: {
+                            unit: 'day',
+                            displayFormats: {
+                                day: 'MMM D, YYYY',
+                                month: 'MMM YYYY',
+                                year: 'YYYY'
+                            },
+                            tooltipFormat: 'MMM D, YYYY'
+                        },
+                        ticks: {
+                            source: 'auto',
+                            autoSkip: true
+                        }
+                    },
+                    y: { 
+                        title: { display: true, text: 'Price (USD)' }
+                    }
+                },
+                plugins: {
+                    zoom: {
+                        limits: {
+                            x: {
+                                minRange: 30 * 24 * 60 * 60 * 1000
+                            }
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            drag: {
+                                enabled: true
+                            },
+                            mode: 'x'
+                        },
+                        pan: {
+                            enabled: true,
+                            mode: 'x'
+                        }
+                    }
+                }
+            }
+        });
+        console.log("Chart Initialized:", chart);
+
+        // Function to update the chart and auto-fill the prediction form
+        function updateChart() {
+            const selectedStock = document.getElementById('stock-select').value;
+            console.log("Selected Stock:", selectedStock);
+            console.log("Data for Selected Stock:", historicalData[selectedStock]);
+
+            // Update the chart
+            chart.data.datasets[0].label = `${selectedStock} Price`;
+            chart.data.datasets[0].data = historicalData[selectedStock];
+            chart.update();
+
+            // Auto-fill the prediction form
+            const prevPriceInput = document.getElementById('prev_price');
+            const ma7Input = document.getElementById('ma7');
+            if (latestFeatures[selectedStock]) {
+                prevPriceInput.value = latestFeatures[selectedStock].prev;
+                ma7Input.value = latestFeatures[selectedStock].ma7;
+            } else {
+                console.warn(`No latest features available for ${selectedStock}. Using default values.`);
+                prevPriceInput.value = 0.0;
+                ma7Input.value = 0.0;
+            }
+        }
+
+        // Initialize the form with the default stock (AAPL)
+        updateChart();
+
+        // Reset zoom when the button is clicked
+        document.getElementById('reset-zoom').addEventListener('click', function() {
+            chart.resetZoom();
+        });
+
+        // Handle prediction form submission
+        document.getElementById('prediction-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const stock = document.getElementById('stock-select').value;
+            const prevPrice = document.getElementById('prev_price').value;
+            const ma7 = document.getElementById('ma7').value;
+
+            fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `stock=${stock}&prev_price=${prevPrice}&ma7=${ma7}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('prediction-result').innerHTML = 
+                    `<p>Predicted ${data.stock} Price: $${data.predicted_price}</p>`;
+            })
+            .catch(error => {
+                document.getElementById('prediction-result').innerHTML = 
+                    `<p>Error: ${error.message}</p>`;
+            });
+        });
+    </script>
+</body>
+</html>
